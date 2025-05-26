@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профессиональный PDF Imposer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1"></script>
+    <script src="https://unpkg.com/downloadjs@1.4.7"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        select, input, button {
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        #preview {
+            margin-top: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+        }
+        .page-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .page-preview {
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: white;
+            text-align: center;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        progress {
+            width: 100%;
+            height: 20px;
+        }
+        .orientation-options {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .orientation-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            background: white;
+        }
+        .orientation-option.selected {
+            border-color: #3498db;
+            background: #eaf2f8;
+        }
+        .custom-size-fields {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .custom-size-fields input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Профессиональный PDF Imposer</h1>
+        
+        <div class="form-group">
+            <label for="pdfFile">Выберите PDF файл:</label>
+            <input type="file" id="pdfFile" accept=".pdf">
+        </div>
+        
+        <div class="form-group">
+            <label>Формат выходного листа:</label>
+            <select id="outputSize">
+                <option value="a4">A4 (210 × 297 мм)</option>
+                <option value="a3">A3 (297 × 420 мм)</option>
+                <option value="letter">Letter (216 × 279 мм)</option>
+                <option value="legal">Legal (216 × 356 мм)</option>
+                <option value="custom1">310 × 430 мм</option>
+                <option value="custom2">320 × 374 мм</option>
+                <option value="custom3">490 × 710 мм</option>
+                <option value="custom4">500 × 710 мм</option>
+                <option value="custom">Пользовательский размер</option>
+            </select>
+            
+            <div id="customSizeContainer" style="display: none;">
+                <div class="custom-size-fields">
+                    <input type="number" id="customWidth" placeholder="Ширина (мм)" min="1">
+                    <input type="number" id="customHeight" placeholder="Высота (мм)" min="1">
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Ориентация листа:</label>
+            <div class="orientation-options">
+                <div class="orientation-option selected" data-value="portrait">
+                    Книжная
+                </div>
+                <div class="orientation-option" data-value="landscape">
+                    Альбомная
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="layout">Раскладка страниц:</label>
+            <select id="layout">
+                <option value="1x1">1 на листе (оригинальный размер)</option>
+                <option value="2x1">2 на листе (в ряд)</option>
+                <option value="1x2">2 на листе (в столбец)</option>
+                <option value="2x2">4 на листе (2×2)</option>
+                <option value="2x3">6 на листе (2×3)</option>
+                <option value="3x3">9 на листе (3×3)</option>
+                <option value="3x4">12 на листе (3×4)</option>
+                <option value="4x4">16 на листе (4×4)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="margin">Отступ от края (мм):</label>
+            <input type="number" id="margin" value="5" min="0" step="1">
+        </div>
+        
+        <div class="form-group">
+            <label for="spacing">Расстояние между страницами (мм):</label>
+            <input type="number" id="spacing" value="5" min="0" step="1">
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="addCropMarks" checked> Добавить метки обрезки
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="addPageNumbers"> Добавить номера страниц
+            </label>
+        </div>
+        
+        <button id="processBtn">Обработать PDF</button>
+        <button id="downloadBtn" disabled>Скачать результат</button>
+        
+        <div class="progress-container" id="progressContainer">
+            <label>Прогресс обработки:</label>
+            <progress id="progressBar" value="0" max="100"></progress>
+            <div id="progressText">0%</div>
+        </div>
+        
+        <div id="preview">
+            <h3>Предпросмотр раскладки:</h3>
+            <div id="previewContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+        
+        let pdfDoc = null;
+        let processedPdfBytes = null;
+        const previewContainer = document.getElementById('previewContainer');
+        
+        // Размеры бумаги в мм (ширина × высота)
+        const paperSizes = {
+            a4: { width: 210, height: 297 },
+            a3: { width: 297, height: 420 },
+            letter: { width: 216, height: 279 },
+            legal: { width: 216, height: 356 },
+            custom1: { width: 310, height: 430 },
+            custom2: { width: 320, height: 374 },
+            custom3: { width: 490, height: 710 },
+            custom4: { width: 500, height: 710 }
+        };
+        
+        // Ориентация
+        let orientation = 'portrait';
+        
+        // Установка ориентации
+        document.querySelectorAll('.orientation-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.orientation-option').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                orientation = this.dataset.value;
+                renderPreview();
+            });
+        });
+        
+        // Пользовательский размер
+        document.getElementById('outputSize').addEventListener('change', function() {
+            const customSizeContainer = document.getElementById('customSizeContainer');
+            customSizeContainer.style.display = this.value === 'custom' ? 'block' : 'none';
+            renderPreview();
+        });
+        
+        // Загрузка PDF файла
+        document.getElementById('pdfFile').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('processBtn').disabled = true;
+            document.getElementById('downloadBtn').disabled = true;
+            previewContainer.innerHTML = '<p>Загрузка PDF...</p>';
+            
+            try {
+                const fileReader = new FileReader();
+                fileReader.onload = async function() {
+                    const typedArray = new Uint8Array(this.result);
+                    
+                    // Загружаем PDF для предпросмотра
+                    pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+                    
+                    // Рендерим предпросмотр
+                    await renderPreview();
+                    
+                    document.getElementById('processBtn').disabled = false;
+                };
+                fileReader.readAsArrayBuffer(file);
+            } catch (error) {
+                console.error('Ошибка загрузки PDF:', error);
+                previewContainer.innerHTML = `<p style="color: red;">Ошибка загрузки PDF: ${error.message}</p>`;
+            }
+        });
+        
+        // Обработка изменений параметров
+        ['outputSize', 'layout', 'margin', 'spacing', 'addCropMarks', 'addPageNumbers', 
+         'customWidth', 'customHeight'].forEach(id => {
+            document.getElementById(id).addEventListener('change', renderPreview);
+        });
+        
+        // Функция для получения текущего размера бумаги
+        function getCurrentPaperSize() {
+            const sizeType = document.getElementById('outputSize').value;
+            
+            if (sizeType === 'custom') {
+                return {
+                    width: parseFloat(document.getElementById('customWidth').value) || 210,
+                    height: parseFloat(document.getElementById('customHeight').value) || 297
+                };
+            }
+            
+            return paperSizes[sizeType] || paperSizes.a4;
+        }
+        
+        // Функция для предпросмотра
+        async function renderPreview() {
+            if (!pdfDoc) return;
+            
+            previewContainer.innerHTML = '';
+            const layout = document.getElementById('layout').value;
+            const [cols, rows] = layout.split('x').map(Number);
+            const margin = parseFloat(document.getElementById('margin').value) || 0;
+            const spacing = parseFloat(document.getElementById('spacing').value) || 0;
+            
+            // Получаем размер бумаги с учетом ориентации
+            let paper = getCurrentPaperSize();
+            if (orientation === 'landscape') {
+                paper = { width: paper.height, height: paper.width };
+            }
+            
+            // Создаем контейнер для предпросмотра
+            const previewWrapper = document.createElement('div');
+            previewWrapper.className = 'page-grid';
+            
+            // Для предпросмотра показываем первые 6 страниц или все, если их меньше
+            const pageCount = Math.min(pdfDoc.numPages, 6);
+            
+            for (let i = 1; i <= pageCount; i++) {
+                const pagePreview = document.createElement('div');
+                pagePreview.className = 'page-preview';
+                
+                const pageTitle = document.createElement('div');
+                pageTitle.textContent = `Лист ${i}`;
+                pageTitle.style.marginBottom = '10px';
+                pageTitle.style.fontWeight = 'bold';
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                // Размеры canvas для предпросмотра
+                const previewWidth = 120;
+                const previewHeight = (previewWidth * paper.height) / paper.width;
+                
+                canvas.width = previewWidth;
+                canvas.height = previewHeight;
+                
+                // Рисуем фон листа
+                context.fillStyle = '#f0f0f0';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Рассчитываем размеры страниц на листе
+                const pageWidth = (paper.width - 2 * margin - (cols - 1) * spacing) / cols;
+                const pageHeight = (paper.height - 2 * margin - (rows - 1) * spacing) / rows;
+                
+                // Масштаб для предпросмотра
+                const scaleX = (previewWidth / paper.width) * 0.9;
+                const scaleY = (previewHeight / paper.height) * 0.9;
+                const scale = Math.min(scaleX, scaleY);
+                
+                // Рисуем миниатюры страниц
+                context.fillStyle = 'white';
+                context.strokeStyle = '#ccc';
+                context.lineWidth = 1;
+                
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const x = margin * scale + col * (pageWidth + spacing) * scale;
+                        const y = margin * scale + row * (pageHeight + spacing) * scale;
+                        
+                        // Рисуем прямоугольник страницы
+                        context.fillRect(x, y, pageWidth * scale, pageHeight * scale);
+                        context.strokeRect(x, y, pageWidth * scale, pageHeight * scale);
+                        
+                        // Добавляем номер страницы
+                        if (document.getElementById('addPageNumbers').checked) {
+                            context.fillStyle = '#999';
+                            context.font = `${Math.max(8, 10 * scale)}px Arial`;
+                            context.fillText(
+                                `${row * cols + col + 1}`,
+                                x + 5 * scale,
+                                y + 12 * scale
+                            );
+                            context.fillStyle = 'white';
+                        }
+                    }
+                }
+                
+                // Добавляем метки обрезки если нужно
+                if (document.getElementById('addCropMarks').checked) {
+                    context.strokeStyle = '#000';
+                    context.lineWidth = 1 * scale;
+                    
+                    // Угловые метки
+                    const markLength = 5 * scale;
+                    
+                    // Левый верхний
+                    context.beginPath();
+                    context.moveTo(0, 0);
+                    context.lineTo(markLength, 0);
+                    context.moveTo(0, 0);
+                    context.lineTo(0, markLength);
+                    context.stroke();
+                    
+                    // Правый верхний
+                    context.beginPath();
+                    context.moveTo(canvas.width, 0);
+                    context.lineTo(canvas.width - markLength, 0);
+                    context.moveTo(canvas.width, 0);
+                    context.lineTo(canvas.width, markLength);
+                    context.stroke();
+                    
+                    // Левый нижний
+                    context.beginPath();
+                    context.moveTo(0, canvas.height);
+                    context.lineTo(markLength, canvas.height);
+                    context.moveTo(0, canvas.height);
+                    context.lineTo(0, canvas.height - markLength);
+                    context.stroke();
+                    
+                    // Правый нижний
+                    context.beginPath();
+                    context.moveTo(canvas.width, canvas.height);
+                    context.lineTo(canvas.width - markLength, canvas.height);
+                    context.moveTo(canvas.width, canvas.height);
+                    context.lineTo(canvas.width, canvas.height - markLength);
+                    context.stroke();
+                }
+                
+                pagePreview.appendChild(pageTitle);
+                pagePreview.appendChild(canvas);
+                previewWrapper.appendChild(pagePreview);
+            }
+            
+            previewContainer.appendChild(previewWrapper);
+        }
+        
+        // Обработка PDF с сохранением векторного качества
+        document.getElementById('processBtn').addEventListener('click', async function() {
+            if (!pdfDoc) {
+                alert('Пожалуйста, загрузите PDF файл сначала');
+                return;
+            }
+            
+            const processBtn = document.getElementById('processBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            processBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            progressBar.value = 0;
+            progressText.textContent = '0%';
+            
+            try {
+                // Получаем параметры
+                const layout = document.getElementById('layout').value;
+                const [cols, rows] = layout.split('x').map(Number);
+                const margin = parseFloat(document.getElementById('margin').value) || 0;
+                const spacing = parseFloat(document.getElementById('spacing').value) || 0;
+                const addCropMarks = document.getElementById('addCropMarks').checked;
+                const addPageNumbers = document.getElementById('addPageNumbers').checked;
+                
+                // Получаем размер бумаги с учетом ориентации
+                let paper = getCurrentPaperSize();
+                if (orientation === 'landscape') {
+                    paper = { width: paper.height, height: paper.width };
+                }
+                
+                // Конвертируем мм в точки (1 мм = 2.83465 точек)
+                const mmToPoints = 2.83465;
+                const paperWidthPoints = paper.width * mmToPoints;
+                const paperHeightPoints = paper.height * mmToPoints;
+                const marginPoints = margin * mmToPoints;
+                const spacingPoints = spacing * mmToPoints;
+                
+                // Рассчитываем размеры страниц на листе
+                const pageWidthPoints = (paperWidthPoints - 2 * marginPoints - (cols - 1) * spacingPoints) / cols;
+                const pageHeightPoints = (paperHeightPoints - 2 * marginPoints - (rows - 1) * spacingPoints) / rows;
+                
+                // Получаем байты исходного PDF
+                const pdfBytes = await pdfDoc.getData();
+                
+                // Создаем новый PDF документ с помощью pdf-lib
+                const { PDFDocument, rgb } = PDFLib;
+                const newPdf = await PDFDocument.create();
+                
+                // Загружаем исходный PDF
+                const srcPdf = await PDFDocument.load(pdfBytes);
+                
+                // Получаем количество страниц
+                const pageCount = srcPdf.getPageCount();
+                const pagesPerSheet = cols * rows;
+                const totalSheets = Math.ceil(pageCount / pagesPerSheet);
+                
+                // Копируем шрифт для номеров страниц
+                const font = await newPdf.embedFont(PDFLib.StandardFonts.Helvetica);
+                
+                // Обрабатываем все страницы
+                for (let sheetIndex = 0; sheetIndex < totalSheets; sheetIndex++) {
+                    // Создаем новую страницу
+                    const newPage = newPdf.addPage([paperWidthPoints, paperHeightPoints]);
+                    
+                    // Добавляем страницы на текущий лист
+                    for (let posInSheet = 0; posInSheet < pagesPerSheet; posInSheet++) {
+                        const pageIndex = sheetIndex * pagesPerSheet + posInSheet;
+                        if (pageIndex >= pageCount) break;
+                        
+                        // Обновляем прогресс
+                        progressBar.value = (pageIndex / pageCount) * 100;
+                        progressText.textContent = `${Math.round((pageIndex / pageCount) * 100)}%`;
+                        
+                        // Копируем страницу из исходного PDF
+                        const [copiedPage] = await newPdf.copyPages(srcPdf, [pageIndex]);
+                        
+                        // Рассчитываем позицию на листе
+                        const col = posInSheet % cols;
+                        const row = Math.floor(posInSheet / cols);
+                        
+                        const x = marginPoints + col * (pageWidthPoints + spacingPoints);
+                        const y = paperHeightPoints - marginPoints - (row + 1) * pageHeightPoints - row * spacingPoints;
+                        
+                        // Вставляем страницу с сохранением векторного качества
+                        newPage.drawPage(copiedPage, {
+                            x: x,
+                            y: y,
+                            width: pageWidthPoints,
+                            height: pageHeightPoints,
+                        });
+                        
+                        // Добавляем номер страницы если нужно
+                        if (addPageNumbers) {
+                            newPage.drawText(`${pageIndex + 1}`, {
+                                x: x + 5,
+                                y: y + 12,
+                                size: 10,
+                                color: rgb(0.5, 0.5, 0.5),
+                                font: font
+                            });
+                        }
+                    }
+                    
+                    // Добавляем метки обрезки если нужно
+                    if (addCropMarks) {
+                        const markLength = 5 * mmToPoints;
+                        const lineOptions = { thickness: 1, color: rgb(0, 0, 0) };
+                        
+                        // Угловые метки
+                        newPage.drawLine({
+                            start: { x: 0, y: 0 },
+                            end: { x: markLength, y: 0 },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: 0, y: 0 },
+                            end: { x: 0, y: markLength },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: paperWidthPoints, y: 0 },
+                            end: { x: paperWidthPoints - markLength, y: 0 },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: paperWidthPoints, y: 0 },
+                            end: { x: paperWidthPoints, y: markLength },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: 0, y: paperHeightPoints },
+                            end: { x: markLength, y: paperHeightPoints },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: 0, y: paperHeightPoints },
+                            end: { x: 0, y: paperHeightPoints - markLength },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: paperWidthPoints, y: paperHeightPoints },
+                            end: { x: paperWidthPoints - markLength, y: paperHeightPoints },
+                            ...lineOptions
+                        });
+                        
+                        newPage.drawLine({
+                            start: { x: paperWidthPoints, y: paperHeightPoints },
+                            end: { x: paperWidthPoints, y: paperHeightPoints - markLength },
+                            ...lineOptions
+                        });
+                    }
+                }
+                
+                // Сохраняем результат
+                processedPdfBytes = await newPdf.save();
+                
+                // Включаем кнопку скачивания
+                downloadBtn.disabled = false;
+                progressText.textContent = 'Готово!';
+                
+            } catch (error) {
+                console.error('Ошибка обработки PDF:', error);
+                progressText.textContent = `Ошибка: ${error.message}`;
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+        
+        // Скачивание результата
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (!processedPdfBytes) {
+                alert('Сначала обработайте PDF');
+                return;
+            }
+            
+            const fileName = document.getElementById('pdfFile').files[0]?.name || 'output.pdf';
+            const outputFileName = fileName.replace('.pdf', '') + '_imposed.pdf';
+            
+            download(new Blob([processedPdfBytes], { type: 'application/pdf' }), outputFileName);
+        });
+    </script>
+</body>
+</html>
